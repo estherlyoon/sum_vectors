@@ -1,0 +1,5 @@
+read file totally before parsing as you go
+bigger input files
+
+look at arg parsing? making it faster
+crossbeam

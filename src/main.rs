@@ -4,15 +4,10 @@ use std::io::{self, BufRead, Write};
 use std::path::Path;
 use std::convert::TryInto;
 use std::time::Instant;
-use crossbeam::atomic::AtomicCell;
 
 
 fn main() -> std::io::Result<()> {
 
-	let mut a = AtomicCell::new(7);
-	println!("{}", a.into_inner());
-
-	// times
 	let mut parseargs = 0.0;
 	let mut obj_creation = 0.0;
 	let mut avg_line = 0.0;
@@ -22,7 +17,6 @@ fn main() -> std::io::Result<()> {
 
 	let time0 = Instant::now();
 	let args: Vec<String> = env::args().collect();
-	// parse command line args
 	let _lines = &args[1].parse::<i32>().unwrap();
 	let dimension = &args[2].parse::<i32>().unwrap();
 	let input_file = &args[3];

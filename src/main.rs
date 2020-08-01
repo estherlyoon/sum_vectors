@@ -5,15 +5,14 @@ use std::path::Path;
 use std::convert::TryInto;
 use std::time::Instant;
 
+use std::sync::{Arc, Mutex};
+use std::thread;
 
 fn main() -> std::io::Result<()> {
 
-	let mut parseargs = 0.0;
 	let mut obj_creation = 0.0;
-	let mut avg_line = 0.0;
+	//let mut avg_line = 0.0;
 	let mut total_line = 0.0;
-	let mut write_out = 0.0;
-	let mut total = 0.0;
 
 	let time0 = Instant::now();
 	let args: Vec<String> = env::args().collect();
@@ -21,11 +20,11 @@ fn main() -> std::io::Result<()> {
 	let dimension = &args[2].parse::<i32>().unwrap();
 	let input_file = &args[3];
 	let output_file = &args[4];
-	parseargs = time0.elapsed().as_nanos() as f64;
+	let parseargs = time0.elapsed().as_nanos() as f64;
 
 	let time1 = Instant::now();
 	// init sum vector and file vars
-	let mut sums = vec![0.0; (*dimension).try_into().unwrap()];
+	let sums = Arc::new(Mutex::new(vec![0.0; (*dimension).try_into().unwrap()]));
 
 	let mut outfile = File::create(output_file)?;
 	
@@ -33,36 +32,48 @@ fn main() -> std::io::Result<()> {
 	if let Ok(lines) = read_lines(input_file) {
 		obj_creation = time1.elapsed().as_nanos() as f64;
 		let time2 = Instant::now();
-		let mut timesum = 0.0;
-		for line in lines {
-			let mut time3 = Instant::now();
-			if let Ok(ip) = line {
-				let split = ip.split(",");
-				let mut index = 0;
-				for s in split {
-					sums[index] += s.parse::<f32>().unwrap();
-					index = index + 1;
-				}
+
+		let mut handles = vec![];
+			for line in lines {
+				let sums_clone = Arc::clone(&sums);
+	
+				let handle = thread::spawn(move || {
+					let mut sums_shared = sums_clone.lock().unwrap();
+					
+					if let Ok(ip) = line {
+						let split = ip.split(",");
+						let mut index = 0;
+						for s in split {
+							sums_shared[index] += s.parse::<f32>().unwrap();
+							index += 1;
+						}
+					}
+				});
+				handles.push(handle);
 			}
-			timesum = timesum + time3.elapsed().as_nanos() as f64;		
+		
+		for handle in handles {
+			handle.join().unwrap();
 		}
+
 		println!("{}", *_lines);
-		avg_line = timesum as f64 / *_lines as f64;	
 		total_line = time2.elapsed().as_nanos() as f64;
-		}
+		
+	}	
 	
 	// write sum to output file
 	let time4 = Instant::now();
-	for n in &sums {
-		let str = n.to_string() + " ";
+
+	let sums1 = sums.lock().unwrap();
+	for n in 0..*dimension {
+		let str = sums1[n as usize].to_string() + " ";
 		outfile.write_all(str.as_bytes()).expect("can't write to output file");
 	}
-	write_out = time4.elapsed().as_nanos() as f64;
-	total = time0.elapsed().as_nanos() as f64;
+	let write_out = time4.elapsed().as_nanos() as f64;
+	let total = time0.elapsed().as_nanos() as f64;
 
 	println!("time to parse args: {} ({:.2}%)", parseargs, parseargs / total * 100.0);
 	println!("time to create vector / files: {} ({:.2}%)", obj_creation, obj_creation / total * 100.0);
-	println!("average time per line: {} ({:.2}%)", avg_line, avg_line / total * 100.0);	
 	println!("total time for summing: {} ({:.2}%)", total_line, total_line / total * 100.0);	
 	println!("time to write to output file: {} ({:.2}%)", write_out, write_out / total * 100.0);
 	println!("total time: {}", total * 100.0);

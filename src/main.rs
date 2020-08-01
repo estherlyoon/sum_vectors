@@ -13,11 +13,7 @@ use crossbeam::atomic::AtomicCell;
 
 fn main() -> std::io::Result<()> {
 
-	let a = AtomicCell::new(vec![1,2,3]);
-	let mut vect = a.as_ptr();
-	vect[0] = 5;
-	println!("{:?}", a.into_inner());
-
+	// for atomic cell make vector of atomics
 	let mut obj_creation = 0.0;
 	let mut avg_line = 0.0;
 	let mut total_line = 0.0;

@@ -65,7 +65,7 @@ fn main() -> std::io::Result<()> {
 	println!("average time per line: {} ({:.2}%)", avg_line, avg_line / total * 100.0);	
 	println!("total time for summing: {} ({:.2}%)", total_line, total_line / total * 100.0);	
 	println!("time to write to output file: {} ({:.2}%)", write_out, write_out / total * 100.0);
-	println!("total time: {}", total * 100.0);
+	println!("total time: {}", total);
 	
 	Ok(())
 }

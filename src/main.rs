@@ -76,7 +76,7 @@ fn main() -> std::io::Result<()> {
 	println!("time to create vector / files: {} ({:.2}%)", obj_creation, obj_creation / total * 100.0);
 	println!("total time for summing: {} ({:.2}%)", total_line, total_line / total * 100.0);	
 	println!("time to write to output file: {} ({:.2}%)", write_out, write_out / total * 100.0);
-	println!("total time: {}", total * 100.0);
+	println!("total time: {}", total);
 	
 	Ok(())
 }

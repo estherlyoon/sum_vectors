@@ -29,7 +29,6 @@ fn main() -> std::io::Result<()> {
 	let spl = contents.split("\n");
 	let mut lines = Arc::new(Mutex::new(vec![]));
 	
-	//let spl_clone = Arc::clone(&spl);
 	let lines_clone = Arc::clone(&lines);
 
 	for s in spl {

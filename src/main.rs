@@ -1,66 +1,73 @@
 use std::env;
-use std::fs::File;
-use std::io::{self, BufRead, Write};
-use std::path::Path;
+use std::fs::{read_to_string, File};
+use std::io::{BufRead, Write};
 use std::convert::TryInto;
 use std::time::Instant;
-
+use std::io::prelude::*;
 use std::sync::{Arc, Mutex};
-use std::thread;
+
+extern crate crossbeam;
 
 fn main() -> std::io::Result<()> {
 
-	let mut obj_creation = 0.0;
-	//let mut avg_line = 0.0;
-	let mut total_line = 0.0;
-
 	let time0 = Instant::now();
+	
 	let args: Vec<String> = env::args().collect();
-	let _lines = &args[1].parse::<i32>().unwrap();
+	let numlines = &args[1].parse::<i32>().unwrap();
 	let dimension = &args[2].parse::<i32>().unwrap();
 	let input_file = &args[3];
 	let output_file = &args[4];
 	let parseargs = time0.elapsed().as_nanos() as f64;
-
+	let cpus: i32 = num_cpus::get() as i32;
+	
 	let time1 = Instant::now();
+
 	// init sum vector and file vars
-	let sums = Arc::new(Mutex::new(vec![0.0; (*dimension).try_into().unwrap()]));
-
+	let mut sums = Arc::new(Mutex::new(vec![0.0; (*dimension).try_into().unwrap()]));
 	let mut outfile = File::create(output_file)?;
+	let contents = read_to_string(input_file).expect("error reading file");
+	let spl = contents.split("\n");
+	let mut lines = Arc::new(Mutex::new(vec![]));
 	
-	// read input file line by line
-	if let Ok(lines) = read_lines(input_file) {
-		obj_creation = time1.elapsed().as_nanos() as f64;
-		let time2 = Instant::now();
+	//let spl_clone = Arc::clone(&spl);
+	let lines_clone = Arc::clone(&lines);
 
-		let mut handles = vec![];
-			for line in lines {
-				let sums_clone = Arc::clone(&sums);
-	
-				let handle = thread::spawn(move || {
-					let mut sums_shared = sums_clone.lock().unwrap();
-					
-					if let Ok(ip) = line {
-						let split = ip.split(",");
-						let mut index = 0;
-						for s in split {
-							sums_shared[index] += s.parse::<f32>().unwrap();
-							index += 1;
-						}
+	for s in spl {
+		let str = Arc::new(Mutex::new(String::from(s)));
+		let str_clone = Arc::clone(&str);
+		let mut str_shared = str_clone.lock().unwrap();
+		let mut lines_shared = lines_clone.lock().unwrap();
+		lines_shared.push(s);
+	}
+
+	let obj_creation = time1.elapsed().as_nanos() as f64;
+
+	let time2 = Instant::now();
+	crossbeam::scope(|scope| {
+		for cpu in 0..cpus {			
+			let sums_clone = Arc::clone(&sums);
+			let lines_clone = Arc::clone(&lines);
+			
+			scope.spawn(move |_| {		
+				let start = cpu * (dimension / cpus);
+				let end = if cpu == cpus-1 {*dimension} else {start + (*dimension / cpus)}; 
+				let lines_sh = lines_clone.lock().unwrap();
+				let mut sums_sh = sums_clone.lock().unwrap();
+				
+				for i in start..end {
+					let split = lines_sh[i as usize].split(",");
+					let mut index = 0;
+					for s in split {
+						sums_sh[index] += s.parse::<f32>().unwrap();
+						index += 1;
 					}
-				});
-				handles.push(handle);
-			}
-		
-		for handle in handles {
-			handle.join().unwrap();
+				}
+			});
 		}
+	});	
 
-		println!("{}", *_lines);
-		total_line = time2.elapsed().as_nanos() as f64;
+	let total_line = time2.elapsed().as_nanos() as f64;
 		
-	}	
-	
 	// write sum to output file
 	let time4 = Instant::now();
 
@@ -69,6 +76,7 @@ fn main() -> std::io::Result<()> {
 		let str = sums1[n as usize].to_string() + " ";
 		outfile.write_all(str.as_bytes()).expect("can't write to output file");
 	}
+
 	let write_out = time4.elapsed().as_nanos() as f64;
 	let total = time0.elapsed().as_nanos() as f64;
 
@@ -81,9 +89,3 @@ fn main() -> std::io::Result<()> {
 	Ok(())
 }
 
-// returns an Iterator to the Reader of the lines of the file
-fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>> 
-where P: AsRef<Path>, {
-	let file = File::open(filename)?;
-	Ok(io::BufReader::new(file).lines())
-}

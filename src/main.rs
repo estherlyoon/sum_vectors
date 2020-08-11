@@ -22,14 +22,12 @@ fn main() -> std::io::Result<()> {
 	
 	let time1 = Instant::now();
 
-	// init sum vector and file vars
 	let mut sums = Arc::new(Mutex::new(vec![0.0; (*dimension).try_into().unwrap()]));
 	let mut outfile = File::create(output_file)?;
 	let contents = read_to_string(input_file).expect("error reading file");
 	let spl = contents.split("\n");
 	let mut lines = Arc::new(Mutex::new(vec![]));
 	
-	//let spl_clone = Arc::clone(&spl);
 	let lines_clone = Arc::clone(&lines);
 
 	for s in spl {
@@ -68,7 +66,6 @@ fn main() -> std::io::Result<()> {
 
 	let total_line = time2.elapsed().as_nanos() as f64;
 		
-	// write sum to output file
 	let time4 = Instant::now();
 
 	let sums1 = sums.lock().unwrap();
